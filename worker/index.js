@@ -76,6 +76,11 @@ async function handle(cached, job) {
       return;
     }
 
+    if (config.onlyPhone && phone !== config.onlyPhone) {
+      log(`skip ${fkey}: ONLY_PHONE test mode`);
+      return;
+    }
+
     let link = '';
     if (job.kind === 'checkin' || job.kind === 'checkout') {
       const t = sign(config.linkSecret, id, job.kind === 'checkin' ? 'in' : 'out', linkExpirySec(job.kind === 'checkin' ? 'in' : 'out', live.window));
@@ -133,10 +138,11 @@ async function main() {
   })) {
     if (!v) throw new Error(`${k} is not set`);
   }
-  if (config.smsMode === 'live' && (!config.supabase.url || !config.supabase.key)) {
+  if (process.env.ONLY_PHONE && !config.onlyPhone) throw new Error('ONLY_PHONE is not a valid phone number');
+  if (config.smsMode === 'live' && !config.onlyPhone && (!config.supabase.url || !config.supabase.key)) {
     throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY are required in live mode');
   }
-  log(`carer texts worker starting (SMS_MODE=${config.smsMode}, tz=${config.tz})`);
+  log(`carer texts worker starting (SMS_MODE=${config.smsMode}, ONLY_PHONE=${config.onlyPhone || 'off'}, tz=${config.tz})`);
   await refresh();
   await tick();
   setInterval(tick, 60 * 1000);

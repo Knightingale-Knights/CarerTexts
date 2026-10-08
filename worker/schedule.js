@@ -8,7 +8,7 @@ const { MIN, zonedToUtc } = require('../lib/time');
 //  notes_3   8pm the day after
 function jobsFor(win, tz) {
   const jobs = [
-    { kind: 'checkin', at: win.start - 15 * MIN, until: win.start + 30 * MIN },
+    { kind: 'checkin', at: win.start - 15 * MIN, until: win.start },
     { kind: 'checkout', at: win.end, until: win.end + 3 * 60 * MIN },
   ];
   const notes = [

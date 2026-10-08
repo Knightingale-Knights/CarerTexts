@@ -83,6 +83,7 @@ test('schedule: only jobs inside their window are due', () => {
   const at = (iso) => dueJobs(win, Date.parse(iso), TZ).map((j) => j.kind);
   assert.deepEqual(at('2026-10-07T19:44:00.000Z'), []);
   assert.deepEqual(at('2026-10-07T19:46:00.000Z'), ['checkin']);
+  assert.deepEqual(at('2026-10-07T20:01:00.000Z'), []); // no check-in text once the shift has started
   assert.deepEqual(at('2026-10-07T21:00:00.000Z'), []); // well after the check-in window
   assert.deepEqual(at('2026-10-08T04:31:00.000Z'), ['checkout']);
   assert.deepEqual(at('2026-10-08T11:30:00.000Z'), ['notes_1']);

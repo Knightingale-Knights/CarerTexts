@@ -14,7 +14,7 @@ function headers(extra = {}) {
 }
 
 const table = () => `${config.supabase.url}/rest/v1/carer_text_log`;
-const dry = () => config.smsMode !== 'live';
+const dry = () => config.smsMode !== 'live' || Boolean(config.onlyPhone);
 
 // Returns true if this caller now owns the (shift, kind) send.
 async function claim(shiftId, kind) {
