@@ -2,7 +2,7 @@
 
 Texts carers a geofenced check-in link, a check-out link and progress note reminders.
 
-- `api/`, `public/`, `lib/` deploy to Vercel (check-in/out page, distance check, writes to Bubble)
+- `api/` and `lib/` deploy to Vercel (check-in/out page in `lib/page.js`, distance check, writes to Bubble)
 - `worker/` runs on Railway (`npm start`), checks every minute, sends texts via Twilio (+61483931556)
 - `sql/carer_text_log.sql` runs once in Supabase (send log, prevents duplicate texts)
 - `npm run probe` confirms Bubble Data API field keys, `npm test` runs the tests
