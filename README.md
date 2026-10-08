@@ -23,3 +23,13 @@ Check-in sets `attend start`. Check-out sets `attend end` and `attended` = yes.
 ## Environment
 
 See `.env.example`. `SMS_MODE=dry` (default) logs texts instead of sending. Set `SMS_MODE=live` to send.
+
+## Early check-out
+
+A carer texts the Klarra number (for example "i need to check out early"). Klarra (`Call-Klarra`, `agent/sms_webhook.py`)
+asks `POST /api/early-checkout` (Vercel, secret `KLARRA_SHARED_SECRET`) for a check-out link for the shift that carer is on, and texts it back.
+
+## Tracks
+
+A shift with a participant is NDIS (texts name the participant, progress note reminders apply).
+A shift with no participant is aged care (texts name the location, no progress note reminders).
