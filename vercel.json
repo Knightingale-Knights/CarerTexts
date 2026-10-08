@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    { "source": "/c/:token", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" },
+        { "key": "Permissions-Policy", "value": "geolocation=(self)" }
+      ]
+    }
+  ]
+}

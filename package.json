@@ -1,0 +1,14 @@
+{
+  "name": "carertexts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shift check-in/out and progress note text reminders for Knightingale carers",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node worker/index.js",
+    "test": "node --test",
+    "probe": "node scripts/probe.js"
+  }
+}
