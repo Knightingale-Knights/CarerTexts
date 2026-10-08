@@ -1,5 +1,5 @@
 const config = require('../lib/config');
-const { formatTime, formatDay } = require('../lib/time');
+const { formatHHMM } = require('../lib/time');
 
 // Australian numbers to E.164. Returns null if it does not look like a number.
 function normalizePhone(raw) {
@@ -12,23 +12,53 @@ function normalizePhone(raw) {
   return null;
 }
 
+// "John Doe" -> "John"
+function firstWord(name) {
+  return String(name || '').trim().split(/\s+/)[0] || '';
+}
+
 function shortAddress(text) {
   if (!text) return 'your shift address';
   return text.length > 60 ? text.split(',').slice(0, 2).join(',').trim() : text;
 }
 
-function buildMessage(kind, { firstName, shift, link }) {
-  const name = firstName ? `Hi ${firstName}, ` : 'Hi, ';
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Texts are plain ASCII on purpose (no emoji or curly quotes) so they stay in the cheaper SMS encoding.
+// ctx: { firstName, track: 'ndis' | 'aged', participantFirst, locationName, shift, link }
+function buildMessage(kind, ctx) {
+  const { track, shift, link } = ctx;
+  const hi = ctx.firstName ? `Hi ${firstWord(ctx.firstName)}` : 'Hi';
+  const participant = firstWord(ctx.participantFirst) || 'your participant';
+  const place = ctx.locationName || shortAddress(shift.address && shift.address.text);
   const w = shift.window;
-  const addr = shortAddress(shift.address && shift.address.text);
+
+  if (track === 'ndis') {
+    if (kind === 'checkin') {
+      return (
+        `${hi}, have a great time with ${participant} today. please click on this link to check in when you arrive: ${link}\n\n` +
+        `If you need to check out early, please text me and I'll send you a check out link.`
+      );
+    }
+    if (kind === 'checkout') {
+      return `${hi}, hope you had a nice shift with ${participant}. Please click on this link to check out before you leave: ${link}`;
+    }
+    const range = `${formatHHMM(w.start, config.tz)} - ${formatHHMM(w.end, config.tz)}`;
+    const date = `${pad2(w.d)}/${pad2(w.m)}`;
+    return `${hi}, I noticed you haven't submitted a progress note for the ${range} shift you did with ${participant} on ${date}. Thought I'd send you a gentle reminder =)`;
+  }
+
+  // aged care
   if (kind === 'checkin') {
-    return `${name}your shift at ${addr} starts at ${formatTime(w.start, config.tz)}. Check in when you arrive: ${link}`;
+    return (
+      `${hi}, have a great time at ${place} today. please click on this link to check in when you arrive: ${link}\n\n` +
+      `If you need to check out early, please text me "i need to check out early" and I'll send you a check out link.`
+    );
   }
   if (kind === 'checkout') {
-    return `${name}your shift at ${addr} has finished. Check out before you leave: ${link}`;
+    return `${hi}, hope you had a nice shift at ${place}. Please click on this link to check out before you leave: ${link}`;
   }
-  const when = `${formatDay(w.start, config.tz)} at ${formatTime(w.start, config.tz)}`;
-  return `${name}your progress note for your shift on ${when} (${addr}) is still outstanding. Please complete it in the Knightingale app. Please do not reply to this message.`;
+  return null; // aged care carers do not get progress note reminders
 }
 
 async function send(to, body) {
@@ -51,4 +81,4 @@ async function send(to, body) {
   return { dryRun: false, sid: json.sid };
 }
 
-module.exports = { normalizePhone, buildMessage, send };
+module.exports = { normalizePhone, firstWord, buildMessage, send };

@@ -89,20 +89,51 @@ test('schedule: only jobs inside their window are due', () => {
   assert.deepEqual(at('2026-10-08T11:30:00.000Z'), ['notes_1']);
 });
 
-test('sms: phone normalisation and messages', () => {
+test('sms: phone normalisation', () => {
   assert.equal(sms.normalizePhone('0412 345 678'), '+61412345678');
   assert.equal(sms.normalizePhone('+61412345678'), '+61412345678');
   assert.equal(sms.normalizePhone('61412345678'), '+61412345678');
   assert.equal(sms.normalizePhone('412345678'), '+61412345678');
   assert.equal(sms.normalizePhone('abc'), null);
   assert.equal(sms.normalizePhone(''), null);
+  assert.equal(sms.firstWord('John Doe'), 'John');
+  assert.equal(sms.firstWord('  Mary-Jane  Smith '), 'Mary-Jane');
+  assert.equal(sms.firstWord(undefined), '');
+});
 
-  const win = time.shiftWindow({ dateISO: '2026-10-07T13:00:00.000Z', startTime: 700, endTime: 1530 }, TZ);
+test('sms: NDIS and aged care texts', () => {
+  const win = time.shiftWindow({ dateISO: '2026-10-07T13:00:00.000Z', startTime: 700, endTime: 1500 }, TZ);
   const shift = { window: win, address: { text: '12 Smith St, Fitzroy VIC 3065' } };
-  const m = sms.buildMessage('checkin', { firstName: 'Kelly', shift, link: 'https://x/c/abc' });
-  assert.match(m, /^Hi Kelly, your shift at 12 Smith St, Fitzroy VIC 3065 starts at 7:00 am\./);
-  assert.match(m, /https:\/\/x\/c\/abc$/);
-  assert.match(sms.buildMessage('notes_2', { firstName: 'Kelly', shift, link: '' }), /progress note/);
+  const link = 'https://x/c/abc';
+
+  const ndis = { firstName: 'Kelly Brown', track: 'ndis', participantFirst: 'John Doe', shift, link };
+  assert.equal(
+    sms.buildMessage('checkin', ndis),
+    "Hi Kelly, have a great time with John today. please click on this link to check in when you arrive: https://x/c/abc\n\nIf you need to check out early, please text me and I'll send you a check out link."
+  );
+  assert.equal(
+    sms.buildMessage('checkout', ndis),
+    'Hi Kelly, hope you had a nice shift with John. Please click on this link to check out before you leave: https://x/c/abc'
+  );
+  assert.equal(
+    sms.buildMessage('notes_1', ndis),
+    "Hi Kelly, I noticed you haven't submitted a progress note for the 0700 - 1500 shift you did with John on 08/10. Thought I'd send you a gentle reminder =)"
+  );
+
+  const aged = { firstName: 'Vishavdeep', track: 'aged', locationName: 'Ron Conn', shift, link };
+  assert.equal(
+    sms.buildMessage('checkin', aged),
+    'Hi Vishavdeep, have a great time at Ron Conn today. please click on this link to check in when you arrive: https://x/c/abc\n\nIf you need to check out early, please text me "i need to check out early" and I\'ll send you a check out link.'
+  );
+  assert.equal(
+    sms.buildMessage('checkout', aged),
+    'Hi Vishavdeep, hope you had a nice shift at Ron Conn. Please click on this link to check out before you leave: https://x/c/abc'
+  );
+  assert.equal(sms.buildMessage('notes_1', aged), null);
+  // falls back to the address when the location name is unavailable
+  assert.match(sms.buildMessage('checkout', { ...aged, locationName: '' }), /shift at 12 Smith St, Fitzroy VIC 3065\./);
+  // every text stays in the plain SMS character set
+  for (const m of [sms.buildMessage('notes_1', ndis), sms.buildMessage('checkin', aged)]) assert.match(m, /^[\x0a\x20-\x7e]+$/);
 });
 
 test('check-in flow: distance gate, write fields, idempotence', async () => {

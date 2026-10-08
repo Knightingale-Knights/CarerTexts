@@ -12,7 +12,8 @@ const MAX_FAILURES = 3;
 
 let shifts = []; // summarised shifts for the current window
 const failures = new Map();
-const userCache = new Map(); // carerId -> { at, user }
+const userCache = new Map(); // id -> { at, user }
+const locationCache = new Map(); // id -> { at, name }
 let ticking = false;
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -28,18 +29,35 @@ async function refresh() {
     shifts = raw
       .map(summarise)
       .filter((s) => s && s.carerId && !s.cancelled && s.window);
-    log(`refreshed: ${shifts.length} shifts in window`);
+    const ndis = shifts.filter((s) => s.track === 'ndis').length;
+    log(`refreshed: ${shifts.length} shifts in window (${ndis} NDIS, ${shifts.length - ndis} aged care)`);
   } catch (e) {
     console.error('refresh failed', e.message);
   }
 }
 
-async function getCarer(id) {
+async function getUserCached(id) {
   const hit = userCache.get(id);
   if (hit && Date.now() - hit.at < 30 * 60000) return hit.user;
   const user = await bubble.getUser(id);
   userCache.set(id, { at: Date.now(), user });
   return user;
+}
+
+// Aged care location name, or '' if it cannot be read (the text then falls back to the address).
+async function getLocationName(id) {
+  if (!id) return '';
+  const hit = locationCache.get(id);
+  if (hit && Date.now() - hit.at < 6 * 60 * 60000) return hit.name;
+  let name = '';
+  try {
+    const loc = await bubble.getLocation(id);
+    name = String(bubble.get(loc, F.locationName) || '').trim();
+  } catch (e) {
+    console.error('location lookup failed', e.message);
+  }
+  locationCache.set(id, { at: Date.now(), name });
+  return name;
 }
 
 // Reasons not to send, checked against the live shift right before sending.
@@ -49,6 +67,7 @@ function skipReason(kind, shift) {
   if (!shift.carerId) return 'no_carer';
   if (kind === 'checkin' && shift.attendStart) return 'already_checked_in';
   if (kind === 'checkout' && shift.attendEnd) return 'already_checked_out';
+  if (kind.startsWith('notes') && !shift.participantId) return 'aged_care_no_notes';
   if (kind.startsWith('notes') && shift.hasProgressNote) return 'note_done';
   return null;
 }
@@ -68,8 +87,8 @@ async function handle(cached, job) {
       return;
     }
 
-    const user = await getCarer(live.carerId);
-    const phone = sms.normalizePhone(bubble.get(user, F.userPhone));
+    const carer = await getUserCached(live.carerId);
+    const phone = sms.normalizePhone(bubble.get(carer, F.userPhone));
     if (!phone) {
       await store.finish(id, job.kind, { status: 'no_phone', carer_id: live.carerId });
       log(`skip ${fkey}: no usable phone number`);
@@ -81,17 +100,33 @@ async function handle(cached, job) {
       return;
     }
 
+    let participantFirst = '';
+    if (live.track === 'ndis') {
+      const participant = await getUserCached(live.participantId);
+      participantFirst = sms.firstWord(bubble.get(participant, F.userFirstName));
+    }
+    const locationName = live.track === 'aged' ? await getLocationName(live.locationId) : '';
+
     let link = '';
     if (job.kind === 'checkin' || job.kind === 'checkout') {
-      const t = sign(config.linkSecret, id, job.kind === 'checkin' ? 'in' : 'out', linkExpirySec(job.kind === 'checkin' ? 'in' : 'out', live.window));
+      const linkKind = job.kind === 'checkin' ? 'in' : 'out';
+      const t = sign(config.linkSecret, id, linkKind, linkExpirySec(linkKind, live.window));
       link = `${config.publicBaseUrl}/c/${t}`;
     }
 
     const body = sms.buildMessage(job.kind, {
-      firstName: bubble.get(user, F.userFirstName),
+      firstName: bubble.get(carer, F.userFirstName),
+      track: live.track,
+      participantFirst,
+      locationName,
       shift: live,
       link,
     });
+    if (!body) {
+      await store.finish(id, job.kind, { status: 'skipped', error: 'no_text_for_track' });
+      return;
+    }
+
     const res = await sms.send(phone, body);
     await store.finish(id, job.kind, {
       status: res.dryRun ? 'dry_run' : 'sent',
@@ -100,7 +135,7 @@ async function handle(cached, job) {
       twilio_sid: res.sid,
       sent_at: new Date().toISOString(),
     });
-    log(`${res.dryRun ? 'dry run' : 'sent'} ${fkey}`);
+    log(`${res.dryRun ? 'dry run' : 'sent'} ${fkey} (${live.track})`);
   } catch (e) {
     failures.set(fkey, (failures.get(fkey) || 0) + 1);
     console.error(`failed ${fkey} (attempt ${failures.get(fkey)})`, e.message);
@@ -119,6 +154,8 @@ async function tick() {
     const now = Date.now();
     for (const s of shifts) {
       for (const job of dueJobs(s.window, now, config.tz)) {
+        // Aged care carers do not submit progress notes, so never claim those reminders.
+        if (!s.participantId && job.kind.startsWith('notes')) continue;
         await handle(s, job);
       }
     }
