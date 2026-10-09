@@ -1,4 +1,4 @@
-const { loadContext, publicView, HttpError } = require('../lib/checkin');
+const { loadContext, publicView, placeInfo, HttpError } = require('../lib/checkin');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
   try {
     const token = String((req.query && req.query.t) || '');
     const ctx = await loadContext(token);
-    return res.status(200).json({ ok: true, ...publicView(ctx) });
+    return res.status(200).json({ ok: true, ...publicView(ctx), ...(await placeInfo(ctx.shift)) });
   } catch (e) {
     if (e instanceof HttpError) return res.status(e.status).json({ ok: false, code: e.code, message: e.message });
     console.error('shift lookup failed', e);
