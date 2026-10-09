@@ -117,8 +117,14 @@ test('sms: NDIS and aged care texts', () => {
   );
   assert.equal(
     sms.buildMessage('notes_1', ndis),
-    "Hi Kelly, I noticed you haven't submitted a progress note for the 0700 - 1500 shift you did with John on 08/10. Thought I'd send you a gentle reminder =)"
+    "Hi Kelly, I noticed you haven't submitted a progress note for the 0700 - 1500 shift you did with John today. Thought I'd send you a gentle reminder =)"
   );
+  for (const k of ['notes_2', 'notes_3']) {
+    assert.equal(
+      sms.buildMessage(k, ndis),
+      "Hi Kelly, I noticed you haven't submitted a progress note for the 0700 - 1500 shift you did with John yesterday. Thought I'd send you a gentle reminder =)"
+    );
+  }
 
   const aged = { firstName: 'Vishavdeep', track: 'aged', locationName: 'Ron Conn', shift, link };
   assert.equal(

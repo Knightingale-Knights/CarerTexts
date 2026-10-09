@@ -8,8 +8,6 @@ function shortAddress(text) {
   return text.length > 60 ? text.split(',').slice(0, 2).join(',').trim() : text;
 }
 
-const pad2 = (n) => String(n).padStart(2, '0');
-
 // Texts are plain ASCII on purpose (no emoji or curly quotes) so they stay in the cheaper SMS encoding.
 // ctx: { firstName, track: 'ndis' | 'aged', participantFirst, locationName, shift, link }
 function buildMessage(kind, ctx) {
@@ -30,8 +28,8 @@ function buildMessage(kind, ctx) {
       return `${hi}, hope you had a nice shift with ${participant}. Please click on this link to check out before you leave: ${link}`;
     }
     const range = `${formatHHMM(w.start, config.tz)} - ${formatHHMM(w.end, config.tz)}`;
-    const date = `${pad2(w.d)}/${pad2(w.m)}`;
-    return `${hi}, I noticed you haven't submitted a progress note for the ${range} shift you did with ${participant} on ${date}. Thought I'd send you a gentle reminder =)`;
+    const when = kind === 'notes_1' ? 'today' : 'yesterday';
+    return `${hi}, I noticed you haven't submitted a progress note for the ${range} shift you did with ${participant} ${when}. Thought I'd send you a gentle reminder =)`;
   }
 
   // aged care
