@@ -73,29 +73,17 @@ function skipReason(kind, shift) {
   return null;
 }
 
-async function handle(cached, job, depth = 0) {
+async function handle(cached, job) {
   const id = cached.id;
-  const carerId = cached.carerId;
   const fkey = `${id}:${job.kind}`;
-  const failKey = `${fkey}:${carerId}`;
-  if ((failures.get(failKey) || 0) >= MAX_FAILURES) return;
-  // A text is remembered per (shift, kind, carer): a carer added to a shift later still gets their own.
-  if (!(await store.claim(id, job.kind, carerId))) return;
+  if ((failures.get(fkey) || 0) >= MAX_FAILURES) return;
+  if (!(await store.claim(id, job.kind))) return;
 
   try {
     const live = summarise(await bubble.getShift(id));
-
-    // The shift was given to a different carer since the last refresh: hand the claim back and start again for them.
-    if (live && live.carerId && live.carerId !== carerId && depth === 0) {
-      await store.release(id, job.kind, carerId);
-      cached.carerId = live.carerId;
-      log(`carer changed on ${id}, switching ${job.kind} to the new carer`);
-      return handle(cached, job, 1);
-    }
-
     const why = skipReason(job.kind, live);
     if (why) {
-      await store.finish(id, job.kind, carerId, { status: 'skipped', error: why });
+      await store.finish(id, job.kind, { status: 'skipped', error: why });
       log(`skip ${fkey}: ${why}`);
       return;
     }
@@ -103,7 +91,7 @@ async function handle(cached, job, depth = 0) {
     const carer = await getUserCached(live.carerId);
     const phone = sms.normalizePhone(bubble.get(carer, F.userPhone));
     if (!phone) {
-      await store.finish(id, job.kind, carerId, { status: 'no_phone' });
+      await store.finish(id, job.kind, { status: 'no_phone', carer_id: live.carerId });
       log(`skip ${fkey}: no usable phone number`);
       return;
     }
@@ -136,23 +124,24 @@ async function handle(cached, job, depth = 0) {
       link,
     });
     if (!body) {
-      await store.finish(id, job.kind, carerId, { status: 'skipped', error: 'no_text_for_track' });
+      await store.finish(id, job.kind, { status: 'skipped', error: 'no_text_for_track' });
       return;
     }
 
     const res = await sms.send(phone, body);
-    await store.finish(id, job.kind, carerId, {
+    await store.finish(id, job.kind, {
       status: res.dryRun ? 'dry_run' : 'sent',
+      carer_id: live.carerId,
       phone,
       twilio_sid: res.sid,
       sent_at: new Date().toISOString(),
     });
     log(`${res.dryRun ? 'dry run' : 'sent'} ${fkey} (${live.track})`);
   } catch (e) {
-    failures.set(failKey, (failures.get(failKey) || 0) + 1);
-    console.error(`failed ${fkey} (attempt ${failures.get(failKey)})`, e.message);
+    failures.set(fkey, (failures.get(fkey) || 0) + 1);
+    console.error(`failed ${fkey} (attempt ${failures.get(fkey)})`, e.message);
     try {
-      await store.release(id, job.kind, carerId);
+      await store.release(id, job.kind);
     } catch (e2) {
       console.error('release failed', e2.message);
     }
