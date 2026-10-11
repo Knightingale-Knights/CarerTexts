@@ -45,6 +45,10 @@ test('time: parse HHMM', () => {
   assert.deepEqual(time.parseHHMM(2200), { h: 22, mi: 0 });
   assert.deepEqual(time.parseHHMM(1530), { h: 15, mi: 30 });
   assert.deepEqual(time.parseHHMM(0), { h: 0, mi: 0 });
+  assert.deepEqual(time.parseHHMM(2430), { h: 24, mi: 30 });
+  const night = time.shiftWindow({ dateISO: '2026-10-07T13:00:00.000Z', startTime: 2200, endTime: 2430 }, TZ);
+  assert.equal(time.formatHHMM(night.end, TZ), '0030');
+  assert.equal((night.end - night.start) / 3600000, 2.5);
   assert.equal(time.parseHHMM(2460), null);
   assert.equal(time.parseHHMM(NaN), null);
 });
