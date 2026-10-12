@@ -86,3 +86,23 @@ test('check-in by text: no upcoming shift, unknown number, or already checked in
   assert.equal((await buildCheckinReply('+61400000000', NOW)).found, false);
   assert.equal((await buildCheckinReply('nope', NOW)).found, false);
 });
+
+test('smart reply: auto picks check out when checked in, check in when about to start, intent overrides', async () => {
+  const { buildSmartReply, ALREADY_IN_MESSAGE } = require('../lib/earlycheckout');
+  bubble.getUser = async (id) => users[id];
+
+  bubble.listShiftsBetween = async () => [shift('S1', 'U1', { 'attend start_date': '2026-10-08T21:02:00.000Z' })];
+  let r = await buildSmartReply('+61412345678', 'auto', NOW);
+  assert.match(r.message, /check out link/);
+  r = await buildSmartReply('+61412345678', 'checkin', NOW);
+  assert.equal(r.message, ALREADY_IN_MESSAGE);
+
+  bubble.listShiftsBetween = async () => [shift('S1', 'U1')];
+  r = await buildSmartReply('+61412345678', 'auto', NOW);
+  assert.match(r.message, /check in link/);
+  r = await buildSmartReply('+61412345678', 'checkout', NOW);
+  assert.match(r.message, /check out link/);
+
+  r = await buildSmartReply('+61400000000', 'auto', NOW);
+  assert.equal(r.found, false);
+});
