@@ -228,3 +228,13 @@ test('check-in on an aged care shift also records the check out at the scheduled
   assert.deepEqual(Object.keys(patches[0]).sort(), ['attend end_date', 'attend start_date', 'attended_boolean']);
   assert.equal(patches[0]['attend end_date'], '2026-10-08T04:30:00.000Z');
 });
+
+test('time: a start of 2400 is midnight at the start of the shift date', () => {
+  const dateISO = '2026-10-19T13:00:00.000Z'; // midnight 20 Oct Melbourne
+  const w = time.shiftWindow({ dateISO, startTime: 2400, endTime: 600 }, TZ);
+  assert.equal(new Date(w.start).toISOString(), '2026-10-19T13:00:00.000Z');
+  assert.equal(new Date(w.end).toISOString(), '2026-10-19T19:00:00.000Z');
+  const w2 = time.shiftWindow({ dateISO, startTime: 2430, endTime: 2600 }, TZ);
+  assert.equal(time.formatHHMM(w2.start, TZ), '0030');
+  assert.equal(time.formatHHMM(w2.end, TZ), '0200');
+});
