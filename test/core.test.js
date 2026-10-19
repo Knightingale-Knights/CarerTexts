@@ -155,6 +155,7 @@ test('check-in flow: distance gate, write fields, idempotence', async () => {
     _id: 'S1',
     'address_geographic_address': { address: '1 Test St', lat: -37.8136, lng: 144.9631 },
     'carer_user': 'U1',
+    'participant_user': 'P1',
     'date_date': '2026-10-07T13:00:00.000Z',
     'start time_number': 700,
     'end time_number': 1530,
@@ -204,4 +205,26 @@ test('shift: a midnight start or end that Bubble leaves out still gets a window'
   assert.equal(time.formatHHMM(b.window.end, TZ), '0000');
   assert.equal((b.window.end - b.window.start) / 3600000, 6);
   assert.equal(summarise(base).window, null);
+});
+
+test('check-in on an aged care shift also records the check out at the scheduled end', async () => {
+  const { perform } = require('../lib/checkin');
+  const token = sign('test-secret', 'S2', 'in', Math.floor(Date.now() / 1000) + 3600);
+  let stored = {
+    _id: 'S2',
+    'address_geographic_address': { address: '1 Test St', lat: -37.8136, lng: 144.9631 },
+    'carer_user': 'U1',
+    'date_date': '2026-10-07T13:00:00.000Z',
+    'start time_number': 700,
+    'end time_number': 1530,
+  };
+  const patches = [];
+  bubble.getShift = async () => stored;
+  bubble.patchShift = async (id, fields) => {
+    patches.push(fields);
+    stored = { ...stored, ...fields };
+  };
+  await perform(token, { lat: -37.8140, lng: 144.9635, accuracy: 20 });
+  assert.deepEqual(Object.keys(patches[0]).sort(), ['attend end_date', 'attend start_date', 'attended_boolean']);
+  assert.equal(patches[0]['attend end_date'], '2026-10-08T04:30:00.000Z');
 });
