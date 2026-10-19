@@ -193,3 +193,15 @@ test('check-in flow: distance gate, write fields, idempotence', async () => {
   stored = { ...stored, 'cancelled_boolean': true };
   await assert.rejects(() => perform(outToken, near), (e) => e.code === 'cancelled');
 });
+
+test('shift: a midnight start or end that Bubble leaves out still gets a window', () => {
+  const { summarise } = require('../lib/shift');
+  const base = { _id: 'S', 'date_date': '2026-10-18T13:00:00.000Z' };
+  const a = summarise({ ...base, 'end time_number': 600 });
+  assert.equal(time.formatHHMM(a.window.start, TZ), '0000');
+  assert.equal(time.formatHHMM(a.window.end, TZ), '0600');
+  const b = summarise({ ...base, 'start time_number': 1800 });
+  assert.equal(time.formatHHMM(b.window.end, TZ), '0000');
+  assert.equal((b.window.end - b.window.start) / 3600000, 6);
+  assert.equal(summarise(base).window, null);
+});
