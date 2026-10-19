@@ -32,4 +32,4 @@ asks `POST /api/early-checkout` (Vercel, secret `KLARRA_SHARED_SECRET`) for a ch
 ## Tracks
 
 Only a shift with a participant (NDIS) gets texts: check in, check out and progress note reminders.
-A shift with no participant (aged care) gets no texts. Those carers use the check in button in Bubble (`/api/link`).
+A shift with no participant (aged care) gets the check in text only. Check out and progress note texts are NDIS only.

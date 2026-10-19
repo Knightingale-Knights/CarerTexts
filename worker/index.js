@@ -65,8 +65,8 @@ function skipReason(kind, shift) {
   if (!shift) return 'shift_missing';
   if (shift.cancelled) return 'cancelled';
   if (!shift.carerId) return 'no_carer';
-  // Only NDIS shifts (participant set) get texts. Aged care carers use the check in button in Bubble.
-  if (!shift.participantId) return 'aged_care_no_texts';
+  // Every shift gets the check in text. Only NDIS shifts (participant set) get check out and progress note texts.
+  if (!shift.participantId && kind !== 'checkin') return 'aged_care_no_texts';
   if (kind === 'checkin' && shift.attendStart) return 'already_checked_in';
   if (kind === 'checkout' && shift.attendEnd) return 'already_checked_out';
   if (kind.startsWith('notes') && shift.hasProgressNote) return 'note_done';
