@@ -18,30 +18,16 @@ function buildMessage(kind, ctx) {
   const w = shift.window;
 
   if (track === 'ndis') {
-    if (kind === 'checkin') {
-      return (
-        `${hi}, have a great time with ${participant} today. please click on this link to check in when you arrive: ${link}\n\n` +
-        `If you need to check out early, please text me and I'll send you a check out link.`
-      );
-    }
-    if (kind === 'checkout') {
-      return `${hi}, hope you had a nice shift with ${participant}. Please click on this link to check out before you leave: ${link}`;
-    }
+    if (kind === 'checkin') return `${hi}, have a great time with ${participant}! Check in when you arrive: ${link}`;
+    if (kind === 'checkout') return `${hi}, hope the shift with ${participant} went well. Please check out here: ${link}`;
     const range = `${formatHHMM(w.start, config.tz)} - ${formatHHMM(w.end, config.tz)}`;
     const when = kind === 'notes_1' ? 'today' : 'yesterday';
-    return `${hi}, I noticed you haven't submitted a progress note for the ${range} shift you did with ${participant} ${when}. Thought I'd send you a gentle reminder =)`;
+    return `${hi}, a gentle reminder you haven't submitted a progress note for your ${range} shift with ${participant} ${when}.`;
   }
 
   // aged care
-  if (kind === 'checkin') {
-    return (
-      `${hi}, have a great time at ${place} today. please click on this link to check in when you arrive: ${link}\n\n` +
-      `If you need to check out early, please text me "i need to check out early" and I'll send you a check out link.`
-    );
-  }
-  if (kind === 'checkout') {
-    return `${hi}, hope you had a nice shift at ${place}. Please click on this link to check out before you leave: ${link}`;
-  }
+  if (kind === 'checkin') return `${hi}, have a great time at ${place}! Check in when you arrive: ${link}`;
+  if (kind === 'checkout') return `${hi}, hope your shift at ${place} went well. Please check out here: ${link}`;
   return null; // aged care carers do not get progress note reminders
 }
 

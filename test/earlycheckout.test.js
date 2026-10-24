@@ -41,7 +41,7 @@ test('early check-out: finds the carer\'s open shift and returns a check-out lin
   const r = await buildReply('+61412345678', NOW);
   assert.equal(r.found, true);
   assert.equal(r.shiftId, 'S-mine');
-  assert.match(r.message, /^Hi Kelly, no worries\. Here is your check out link: https:\/\/carertexts\.test\/c\//);
+  assert.match(r.message, /^Hi Kelly, here is your check out link: https:\/\/carertexts\.test\/c\//);
   const token = r.message.split('/c/')[1];
   const payload = verify('test-secret', token);
   assert.equal(payload.shiftId, 'S-mine');
@@ -73,7 +73,7 @@ test('check-in by text: returns a check-in link for the shift about to start', a
   const r = await buildCheckinReply('+61412345678', NOW);
   assert.equal(r.found, true);
   assert.equal(r.shiftId, 'S-mine');
-  assert.match(r.message, /^Hi Kelly, no worries\. Here is your check in link: https:\/\/carertexts\.test\/c\//);
+  assert.match(r.message, /^Hi Kelly, here is your check in link: https:\/\/carertexts\.test\/c\//);
   const payload = verify('test-secret', r.message.split('/c/')[1]);
   assert.deepEqual([payload.shiftId, payload.kind], ['S-mine', 'in']);
 });
