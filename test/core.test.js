@@ -257,3 +257,30 @@ test('short link token: round trip, short, tamper rejected, long fallback, expir
   });
   assert.ok((await loadContext(lt)).shift);
 });
+
+test('dev links: test flag survives the token and switches Bubble calls to version-test', async () => {
+  const { signLink } = require('../lib/token');
+  const id = '1792173888825x582196950423360600';
+  const t = signLink('s', id, 'in', 2000000000, true);
+  assert.deepEqual(verify('s', t), { shiftId: id, kind: 'in', expSec: null, test: true });
+  assert.equal(verify('s', signLink('s', id, 'out', 1, true)).kind, 'out');
+  assert.equal(verify('s', signLink('s', id, 'in', 1)).test, undefined);
+  const live = signLink('s', id, 'in', 1);
+  assert.equal(verify('s', 'j' + live.slice(1)), null); // flipping live to test breaks the signature
+  let seen;
+  const realFetch = global.fetch;
+  global.fetch = async (url) => {
+    seen = String(url);
+    return { status: 200, ok: true, text: async () => '{}' };
+  };
+  process.env.BUBBLE_API_BASE = 'https://example.test/api/1.1';
+  const b = require('../lib/bubble');
+  return (async () => {
+    await b.request('GET', '/obj/shift/x');
+    assert.equal(seen, 'https://example.test/api/1.1/obj/shift/x');
+    b.setTestMode(true);
+    await b.request('GET', '/obj/shift/x');
+    assert.equal(seen, 'https://example.test/version-test/api/1.1/obj/shift/x');
+    global.fetch = realFetch;
+  })();
+});
