@@ -1,7 +1,7 @@
 const config = require('../lib/config');
 const bubble = require('../lib/bubble');
 const { summarise } = require('../lib/shift');
-const { sign } = require('../lib/token');
+const { signLink } = require('../lib/token');
 const { zonedToUtc, partsIn, HOUR } = require('../lib/time');
 const { dueJobs, linkExpirySec } = require('./schedule');
 const sms = require('./sms');
@@ -111,7 +111,7 @@ async function handle(cached, job) {
     let link = '';
     if (job.kind === 'checkin' || job.kind === 'checkout') {
       const linkKind = job.kind === 'checkin' ? 'in' : 'out';
-      const t = sign(config.linkSecret, id, linkKind, linkExpirySec(linkKind, live.window));
+      const t = signLink(config.linkSecret, id, linkKind, linkExpirySec(linkKind, live.window));
       link = `${config.publicBaseUrl}/c/${t}`;
     }
 

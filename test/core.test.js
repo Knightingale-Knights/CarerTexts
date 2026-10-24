@@ -238,3 +238,31 @@ test('time: a start of 2400 is midnight at the start of the shift date', () => {
   assert.equal(time.formatHHMM(w2.start, TZ), '0030');
   assert.equal(time.formatHHMM(w2.end, TZ), '0200');
 });
+
+test('short link token: round trip, short, tamper rejected, long fallback, expiry from the shift', async () => {
+  const { signLink } = require('../lib/token');
+  const id = '1792173888825x582196950423360600';
+  const t = signLink('s', id, 'in', 2000000000);
+  assert.ok(t.length <= 32, t);
+  assert.deepEqual(verify('s', t), { shiftId: id, kind: 'in', expSec: null });
+  assert.equal(verify('s', signLink('s', id, 'out', 1)).kind, 'out');
+  assert.equal(verify('other', t), null);
+  assert.equal(verify('s', t.slice(0, -1) + (t.endsWith('A') ? 'B' : 'A')), null);
+  assert.equal(verify('s', 'i1.2.zzzzzzzz'), null);
+  // ids that do not fit the pattern keep the long token with its own expiry
+  const long = signLink('s', 'weird-id', 'in', 2000000000);
+  assert.deepEqual(verify('s', long), { shiftId: 'weird-id', kind: 'in', expSec: 2000000000 });
+  assert.equal(isExpired({ expSec: null }), false);
+
+  const { loadContext } = require('../lib/checkin');
+  bubble.getShift = async () => ({
+    _id: id, 'carer_user': 'U1', 'date_date': '2020-01-01T13:00:00.000Z', 'start time_number': 700, 'end time_number': 1530,
+  });
+  const lt = signLink('test-secret', id, 'out', 1);
+  await assert.rejects(() => loadContext(lt), (e) => e.code === 'expired');
+  const today = new Date().toISOString();
+  bubble.getShift = async () => ({
+    _id: id, 'carer_user': 'U1', 'date_date': today, 'start time_number': 0, 'end time_number': 2359,
+  });
+  assert.ok((await loadContext(lt)).shift);
+});
