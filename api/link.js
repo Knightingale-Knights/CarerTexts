@@ -12,7 +12,7 @@ function authorised(req) {
 }
 
 // Called by Bubble (API Connector) when a carer taps the check in button there.
-// Body: { shiftId, carerId, test } (test = "yes" from the Bubble dev version). Returns { ok, kind, url }.
+// Body: { shiftId, carerId, test } (test = "yes" from the Bubble dev version, kind = "in" or "out", optional). Returns { ok, kind, url }.
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).json({ ok: false, code: 'method', message: 'Method not allowed' });
@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (typeof body === 'string') body = JSON.parse(body);
     const test = ['yes', 'true', '1'].includes(String((body && body.test) || '').toLowerCase());
-    const out = await buildLink(String((body && body.shiftId) || ''), String((body && body.carerId) || ''), test);
+    const out = await buildLink(String((body && body.shiftId) || ''), String((body && body.carerId) || ''), test, String((body && body.kind) || '').toLowerCase());
     return res.status(200).json(out);
   } catch (e) {
     if (e instanceof HttpError) return res.status(e.status).json({ ok: false, code: e.code, message: e.message });

@@ -40,3 +40,17 @@ test('link: only the shift\'s own carer, and not a cancelled shift', async () =>
   bubble.getShift = async () => null;
   await assert.rejects(() => buildLink('S1', 'U1'), { code: 'no_shift' });
 });
+
+test('link: a button can ask for a check out link before checking in', async () => {
+  const { buildLink } = require('../lib/link');
+  const { verify } = require('../lib/token');
+  const bubble = require('../lib/bubble');
+  bubble.getShift = async () => ({
+    _id: '1792173888825x582196950423360600', 'carer_user': 'U1', 'participant_user': 'P1',
+    'date_date': '2026-10-24T13:00:00.000Z', 'start time_number': 700, 'end time_number': 1530,
+  });
+  const a = await buildLink('1792173888825x582196950423360600', 'U1', false, 'out');
+  assert.equal(a.kind, 'out');
+  assert.equal(verify('test-secret', a.url.split('/c/')[1]).kind, 'out');
+  assert.equal((await buildLink('1792173888825x582196950423360600', 'U1', false, '')).kind, 'in');
+});
