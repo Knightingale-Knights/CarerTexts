@@ -171,7 +171,7 @@ test('check-in flow: distance gate, write fields, idempotence', async () => {
   const ok = await perform(token, edgeIn);
   assert.equal(ok.ok, true);
   assert.equal(patches.length, 1);
-  assert.deepEqual(Object.keys(patches[0]), ['attend start_date']);
+  assert.deepEqual(Object.keys(patches[0]).sort(), ['attend start_date', 'check in time_date']);
 
   const again = await perform(token, near);
   assert.equal(again.already, true);
@@ -179,7 +179,7 @@ test('check-in flow: distance gate, write fields, idempotence', async () => {
 
   const out = await perform(outToken, near);
   assert.equal(out.ok, true);
-  assert.deepEqual(Object.keys(patches[1]).sort(), ['attend end_date', 'attended_boolean']);
+  assert.deepEqual(Object.keys(patches[1]).sort(), ['attend end_date', 'attended_boolean', 'check out time_date']);
   assert.equal(patches[1]['attended_boolean'], true);
 
   stored = { ...stored, 'cancelled_boolean': true };
@@ -216,7 +216,8 @@ test('check-in on an aged care shift also records the check out at the scheduled
     stored = { ...stored, ...fields };
   };
   await perform(token, { lat: -37.8140, lng: 144.9635, accuracy: 20 });
-  assert.deepEqual(Object.keys(patches[0]).sort(), ['attend end_date', 'attend start_date', 'attended_boolean']);
+  assert.deepEqual(Object.keys(patches[0]).sort(), ['attend end_date', 'attend start_date', 'attended_boolean', 'check in time_date', 'check out time_date']);
+  assert.equal(patches[0]['check out time_date'], '2026-10-08T04:30:00.000Z');
   assert.equal(patches[0]['attend end_date'], '2026-10-08T04:30:00.000Z');
 });
 
