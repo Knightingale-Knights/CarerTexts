@@ -54,3 +54,15 @@ test('link: a button can ask for a check out link before checking in', async () 
   assert.equal(verify('test-secret', a.url.split('/c/')[1]).kind, 'out');
   assert.equal((await buildLink('1792173888825x582196950423360600', 'U1', false, '')).kind, 'in');
 });
+
+test('link: also returns the scheduled start and end as ISO times', async () => {
+  const { buildLink } = require('../lib/link');
+  const bubble = require('../lib/bubble');
+  bubble.getShift = async () => ({
+    _id: '1792173888825x582196950423360600', 'carer_user': 'U1',
+    'date_date': '2026-10-24T13:00:00.000Z', 'start time_number': 700, 'end time_number': 1530,
+  });
+  const r = await buildLink('1792173888825x582196950423360600', 'U1');
+  assert.equal(r.startAt, '2026-10-24T20:00:00.000Z');
+  assert.equal(r.endAt, '2026-10-25T04:30:00.000Z');
+});
