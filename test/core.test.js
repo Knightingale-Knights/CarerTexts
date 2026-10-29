@@ -171,7 +171,7 @@ test('check-in flow: distance gate, write fields, idempotence', async () => {
   const ok = await perform(token, edgeIn);
   assert.equal(ok.ok, true);
   assert.equal(patches.length, 1);
-  assert.deepEqual(Object.keys(patches[0]).sort(), ['attend start_date', 'check in time_date']);
+  assert.deepEqual(Object.keys(patches[0]).sort(), ['attend start_date', 'attended_boolean', 'check in time_date']);
 
   const again = await perform(token, near);
   assert.equal(again.already, true);
