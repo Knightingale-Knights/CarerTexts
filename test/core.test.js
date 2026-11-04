@@ -65,7 +65,14 @@ test('time: day shift and overnight shift windows', () => {
   assert.equal(new Date(night.end).toISOString(), '2026-10-08T19:00:00.000Z'); // 6am 9 Oct
 });
 
+test('schedule: notes_2 is paused unless NOTES_2_ENABLED=1', () => {
+  const win = time.shiftWindow({ dateISO: '2026-10-07T13:00:00.000Z', startTime: 700, endTime: 1530 }, TZ);
+  const kinds = jobsFor(win, TZ).map((j) => j.kind);
+  assert.deepEqual(kinds, ['checkin', 'checkout', 'notes_1', 'notes_3']);
+});
+
 test('schedule: day shift gets all five texts at the right times', () => {
+  process.env.NOTES_2_ENABLED = '1';
   const win = time.shiftWindow({ dateISO: '2026-10-07T13:00:00.000Z', startTime: 700, endTime: 1530 }, TZ);
   const jobs = Object.fromEntries(jobsFor(win, TZ).map((j) => [j.kind, new Date(j.at).toISOString()]));
   assert.equal(jobs.checkin, '2026-10-07T19:45:00.000Z'); // 6:45am
@@ -73,13 +80,14 @@ test('schedule: day shift gets all five texts at the right times', () => {
   assert.equal(jobs.notes_1, '2026-10-08T11:00:00.000Z'); // 10pm
   assert.equal(jobs.notes_2, '2026-10-08T23:00:00.000Z'); // 10am 9 Oct
   assert.equal(jobs.notes_3, '2026-10-09T09:00:00.000Z'); // 8pm 9 Oct
+  delete process.env.NOTES_2_ENABLED;
 });
 
 test('schedule: overnight shift skips the 10pm reminder that falls before the shift ends', () => {
   const win = time.shiftWindow({ dateISO: '2026-10-07T13:00:00.000Z', startTime: 2200, endTime: 600 }, TZ);
   const kinds = jobsFor(win, TZ).map((j) => j.kind);
   assert.ok(!kinds.includes('notes_1'));
-  assert.ok(kinds.includes('notes_2') && kinds.includes('notes_3'));
+  assert.ok(kinds.includes('notes_3'));
 });
 
 test('schedule: only jobs inside their window are due', () => {
