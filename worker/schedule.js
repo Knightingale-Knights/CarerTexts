@@ -16,7 +16,10 @@ function jobsFor(win, tz) {
     ['notes_2', zonedToUtc(win.y, win.m, win.d + 1, 10, 0, tz)],
     ['notes_3', zonedToUtc(win.y, win.m, win.d + 1, 20, 0, tz)],
   ];
+  // Paused for now. Set NOTES_2_ENABLED=1 on the worker to send the 10am next day reminder again.
+  const paused = process.env.NOTES_2_ENABLED === '1' ? [] : ['notes_2'];
   for (const [kind, at] of notes) {
+    if (paused.includes(kind)) continue;
     if (at >= win.end + 30 * MIN) jobs.push({ kind, at, until: at + 2 * 60 * MIN });
   }
   return jobs;
